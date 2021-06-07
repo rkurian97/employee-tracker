@@ -1,4 +1,5 @@
 const db= require('./db/connection');
+const table = require('console.table');
 const inquirer = require('inquirer');
 
 const promptAction= () =>{
