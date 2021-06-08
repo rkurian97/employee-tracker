@@ -106,6 +106,66 @@ const addRole = () => {
 
 }
 
+const addEmployee= () => {
+    let roles= [];
+    db.query(
+        'SELECT title FROM role',
+        function( err, res){
+            for (const element of res){
+                roles.push(element.title)
+            }
+        }
+    );
+
+    let employees= ['None'];
+    db.query(
+        'SELECT concat(first_name, " ", last_name) as manager FROM employee',
+        function( err, res){
+            for (const element of res){
+                employees.push(element.manager)
+            }
+        }
+    );
+    inquirer.prompt([
+        {
+            type: 'input',
+            message: 'Enter first name: ',
+            name: 'first'
+
+        },
+        {
+            type: 'input',
+            message: 'Enter last name: ',
+            name: 'last'
+        },
+        {
+            type: 'list',
+            message: 'Pick a role',
+            name: 'role',
+            choices: roles
+        },
+        {
+            type: 'list',
+            message: 'Pick a manager',
+            name: 'manager',
+            choices: employees
+        }
+    ])
+    .then( data =>{
+        if (data.manager=='None'){
+            db.execute(
+                `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+                VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, NULL);`
+            )
+        } else {
+            db.execute(
+                `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+                VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, ${employees.indexOf(data.manager)});`
+            )
+        }
+    })
+}
+
 promptAction()
  .then(data => { 
      if (data.action == 'view all departments'){
@@ -118,6 +178,8 @@ promptAction()
         addDepartment();
      } else if (data.action== 'add a role'){
         addRole();
+     } else if (data.action== 'add an employee'){
+        addEmployee();
      }
  })
  .catch(err =>{
