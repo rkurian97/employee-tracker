@@ -50,6 +50,61 @@ const viewEmployees= () =>{
     );
 }
 
+const addDepartment= () => {
+    inquirer.prompt([
+        {
+            type: 'input',
+            message: 'Enter department name: ',
+            name: 'department'
+
+        }
+    ])
+    .then( data =>{
+        db.execute(
+            `INSERT INTO department (name)
+            VALUES ('${data.department}');`
+        )
+    })
+}
+
+const addRole = () => {
+    let departments= [];
+    db.query(
+        'SELECT name FROM department',
+        function( err, res){
+            for (const element of res){
+                departments.push(element.name)
+            }
+        }
+    );
+
+    inquirer.prompt([
+        {
+            type: 'input',
+            message: 'Enter title: ',
+            name: 'title'
+
+        },
+        {
+            type: 'input',
+            message: 'Enter salary: ',
+            name: 'salary'
+        },
+        {
+            type: 'list',
+            message: 'Pick a department',
+            name: 'department',
+            choices: departments
+        }
+    ])
+    .then( data =>{
+        db.execute(
+            `INSERT INTO role (title, salary, department_id)
+            VALUES ('${data.title}', ${data.salary}, ${departments.indexOf(data.department)+1});`
+        )
+    })
+
+}
 
 promptAction()
  .then(data => { 
@@ -59,6 +114,10 @@ promptAction()
         viewRoles();
      }else if (data.action == 'view all employees'){
         viewEmployees();
+     } else if (data.action== 'add a department'){
+        addDepartment();
+     } else if (data.action== 'add a role'){
+        addRole();
      }
  })
  .catch(err =>{
