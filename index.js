@@ -9,7 +9,7 @@ const promptAction= () =>{
             type: 'list',
             message: 'What would you like to do',
             name: 'action',
-            choices: ['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee', 'update an employee role']
+            choices: ['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee', 'update an employee manager']
         }
     ]);
 };
@@ -118,7 +118,7 @@ const addEmployee= () => {
     );
 
     let employees= ['None'];
-    db.query(
+    db.query( 
         'SELECT concat(first_name, " ", last_name) as manager FROM employee',
         function( err, res){
             for (const element of res){
@@ -166,6 +166,52 @@ const addEmployee= () => {
     })
 }
 
+const updateEmpManager= () =>{
+
+    let employees= [];
+    let managers= ['None'];
+    db.query( 
+        'SELECT concat(first_name, " ", last_name) as manager FROM employee',
+        function( err, res){
+            for (const element of res){
+                employees.push(element.manager)
+                managers.push(element.manager)
+            }
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    message: 'Pick an employee',
+                    name: 'employee',
+                    choices: employees
+                },
+                {
+                    type: 'list',
+                    message: 'Pick a manager',
+                    name: 'manager',
+                    choices: managers
+                }
+            ])
+            .then( data =>{
+                if (data.manager=='None'){
+                    db.execute(
+                        `Update employee 
+                        SET manager_id= NULL
+                        WHERE id= ${employees.indexOf(data.employee)+1}
+                        `
+                    )
+                } else {
+                    db.execute(
+                        `Update employee 
+                        SET manager_id= ${employees.indexOf(data.manager)}
+                        WHERE id= ${employees.indexOf(data.employee)+1}
+                        `
+                    )
+                }
+            })
+        }
+    );
+}
+
 promptAction()
  .then(data => { 
      if (data.action == 'view all departments'){
@@ -180,7 +226,9 @@ promptAction()
         addRole();
      } else if (data.action== 'add an employee'){
         addEmployee();
-     }
+     } else if (data.action== 'update an employee manager'){
+        updateEmpManager();
+     } 
  })
  .catch(err =>{
      console.log(err)
