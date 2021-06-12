@@ -19,6 +19,7 @@ const viewDepartments= () =>{
         'SELECT * FROM department',
         function( err, res){
             console.table(res)
+            runEmployeeTracker();
         }
     );
 };
@@ -32,6 +33,7 @@ const viewRoles= () =>{
         `,
         function( err, res){
             console.table(res)
+            runEmployeeTracker();
         }
     );
 }
@@ -46,6 +48,7 @@ const viewEmployees= () =>{
         on b.manager_id=e.id;`,
         function( err, res){
             console.table(res)
+            runEmployeeTracker();
         }
     );
 }
@@ -64,6 +67,7 @@ const addDepartment= () => {
             `INSERT INTO department (name)
             VALUES ('${data.department}');`
         )
+        runEmployeeTracker();
     })
 }
 
@@ -102,6 +106,7 @@ const addRole = () => {
             `INSERT INTO role (title, salary, department_id)
             VALUES ('${data.title}', ${data.salary}, ${departments.indexOf(data.department)+1});`
         )
+        runEmployeeTracker();
     })
 
 }
@@ -163,6 +168,7 @@ const addEmployee= () => {
                 VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, ${employees.indexOf(data.manager)});`
             )
         }
+        runEmployeeTracker();
     })
 }
 
@@ -208,6 +214,7 @@ const updateEmpManager= () =>{
                     )
                 }
             })
+            runEmployeeTracker();
         }
     );
 }
@@ -254,33 +261,40 @@ const updateEmpRole= () =>{
                         `
                     )
 
+                    runEmployeeTracker();
+
             })
         }
     );
 }
 
-promptAction()
- .then(data => { 
-     if (data.action == 'view all departments'){
-        viewDepartments();
-     }else if (data.action == 'view all roles'){
-        viewRoles();
-     }else if (data.action == 'view all employees'){
-        viewEmployees();
-     } else if (data.action== 'add a department'){
-        addDepartment();
-     } else if (data.action== 'add a role'){
-        addRole();
-     } else if (data.action== 'add an employee'){
-        addEmployee();
-     } else if (data.action== 'update an employee manager'){
-        updateEmpManager();
-     } else if (data.action== 'update an employee role'){
-        updateEmpRole();
-     }else {
-         process.exit();
-     }
- })
- .catch(err =>{
-     console.log(err)
- })
+const runEmployeeTracker= ()=>{
+    promptAction()
+    .then(data => { 
+        if (data.action == 'view all departments'){
+           viewDepartments();
+        }else if (data.action == 'view all roles'){
+           viewRoles();
+        }else if (data.action == 'view all employees'){
+           viewEmployees();
+           runEmployeeTracker();
+        } else if (data.action== 'add a department'){
+           addDepartment();
+        } else if (data.action== 'add a role'){
+           addRole();
+        } else if (data.action== 'add an employee'){
+           addEmployee();
+        } else if (data.action== 'update an employee manager'){
+           updateEmpManager();
+        } else if (data.action== 'update an employee role'){
+           updateEmpRole();
+        }else {
+            process.exit();
+        }
+    })
+    .catch(err =>{
+        console.log(err)
+    })
+}
+
+runEmployeeTracker();
