@@ -9,7 +9,7 @@ const promptAction= () =>{
             type: 'list',
             message: 'What would you like to do',
             name: 'action',
-            choices: ['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee', 'update an employee manager']
+            choices: ['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee', 'update an employee manager', 'update an employee role', 'end session']
         }
     ]);
 };
@@ -212,6 +212,53 @@ const updateEmpManager= () =>{
     );
 }
 
+const updateEmpRole= () =>{
+
+    let employees= [];
+    let roles= [];
+
+    db.query(
+        'SELECT title FROM role',
+        function( err, res){
+            for (const element of res){
+                roles.push(element.title)
+            }
+        }
+    );
+    
+    db.query( 
+        'SELECT concat(first_name, " ", last_name) as employees FROM employee',
+        function( err, res){
+            for (const element of res){
+                employees.push(element.employees)
+            }
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    message: 'Pick an employee',
+                    name: 'employee',
+                    choices: employees
+                },
+                {
+                    type: 'list',
+                    message: 'Pick a role',
+                    name: 'newRole',
+                    choices: roles
+                }
+            ])
+            .then( data =>{
+                    db.execute(
+                        `Update employee 
+                        SET role_id= ${roles.indexOf(data.newRole)+1}
+                        WHERE id= ${employees.indexOf(data.employee)+1}
+                        `
+                    )
+
+            })
+        }
+    );
+}
+
 promptAction()
  .then(data => { 
      if (data.action == 'view all departments'){
@@ -228,7 +275,11 @@ promptAction()
         addEmployee();
      } else if (data.action== 'update an employee manager'){
         updateEmpManager();
-     } 
+     } else if (data.action== 'update an employee role'){
+        updateEmpRole();
+     }else {
+         process.exit();
+     }
  })
  .catch(err =>{
      console.log(err)
