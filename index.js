@@ -1,8 +1,10 @@
+//dependencies
 require('dotenv').config()
 const db= require('./db/connection');
 const table = require('console.table');
 const inquirer = require('inquirer');
 
+//starting prompt to show options
 const promptAction= () =>{
     return inquirer.prompt([
         {
@@ -14,47 +16,42 @@ const promptAction= () =>{
     ]);
 };
 
-const viewDepartments= () =>{
-    db.query(
-        'SELECT * FROM department',
-        function( err, res){
-            console.table(res)
-            runEmployeeTracker();
-        }
-    );
+// show the department table
+const viewDepartments= async () =>{
+    const data= await db.promise().query('SELECT * FROM department');
+    console.table(data[0]);
 };
 
-const viewRoles= () =>{
-    db.query(
+// show role table
+const viewRoles= async () =>{
+    const data= await db.promise().query(
         `Select r.id, r.title, r.salary, d.name as 'department'
         From role r
         join department d
         on r.department_id=d.id
-        `,
-        function( err, res){
-            console.table(res)
-            runEmployeeTracker();
-        }
+        `
     );
+
+    console.table(data[0]);
 }
 
-const viewEmployees= () =>{
-    db.query(
+//show employee table
+const viewEmployees= async () =>{
+    const data= await db.promise().query(
         `Select e.id, e.first_name, e.last_name, r.title, concat(b.first_name, " ", b.last_name) as 'manager'
         from employee e
         join role r
         on e.role_id=r.id
         left join employee b
-        on b.manager_id=e.id;`,
-        function( err, res){
-            console.table(res)
-            runEmployeeTracker();
-        }
+        on e.manager_id=b.id;`
     );
+    console.table(data[0]);
 }
 
+// add a department
 const addDepartment= () => {
-    inquirer.prompt([
+
+   inquirer.prompt([
         {
             type: 'input',
             message: 'Enter department name: ',
@@ -62,25 +59,17 @@ const addDepartment= () => {
 
         }
     ])
-    .then( data =>{
-        db.execute(
+    .then(data =>{
+        db.promise().query(
             `INSERT INTO department (name)
-            VALUES ('${data.department}');`
-        )
-        runEmployeeTracker();
+             VALUES ('${data.department}');`
+        );
     })
 }
 
-const addRole = () => {
-    let departments= [];
-    db.query(
-        'SELECT name FROM department',
-        function( err, res){
-            for (const element of res){
-                departments.push(element.name)
-            }
-        }
-    );
+const addRole = async() => {
+    // grab the current departments and put into an array
+    let departments= await getDepartments();
 
     inquirer.prompt([
         {
@@ -102,35 +91,19 @@ const addRole = () => {
         }
     ])
     .then( data =>{
-        db.execute(
+        db.promise().query(
             `INSERT INTO role (title, salary, department_id)
             VALUES ('${data.title}', ${data.salary}, ${departments.indexOf(data.department)+1});`
         )
-        runEmployeeTracker();
     })
-
 }
 
-const addEmployee= () => {
-    let roles= [];
-    db.query(
-        'SELECT title FROM role',
-        function( err, res){
-            for (const element of res){
-                roles.push(element.title)
-            }
-        }
-    );
+const addEmployee= async () => {
+    let roles= await getRoles();
 
-    let employees= ['None'];
-    db.query( 
-        'SELECT concat(first_name, " ", last_name) as manager FROM employee',
-        function( err, res){
-            for (const element of res){
-                employees.push(element.manager)
-            }
-        }
-    );
+    let managers= ['None'];
+    managers= await getEmployees(managers);
+
     inquirer.prompt([
         {
             type: 'input',
@@ -153,120 +126,130 @@ const addEmployee= () => {
             type: 'list',
             message: 'Pick a manager',
             name: 'manager',
-            choices: employees
+            choices: managers
         }
     ])
     .then( data =>{
         if (data.manager=='None'){
-            db.execute(
+            db.promise().query(
                 `INSERT INTO employee (first_name, last_name, role_id, manager_id)
                 VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, NULL);`
             )
         } else {
-            db.execute(
+            db.promise().query(
                 `INSERT INTO employee (first_name, last_name, role_id, manager_id)
-                VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, ${employees.indexOf(data.manager)});`
+                VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, ${managers.indexOf(data.manager)});`
             )
         }
-        runEmployeeTracker();
     })
 }
 
-const updateEmpManager= () =>{
-
+const updateEmpManager= async () =>{
     let employees= [];
+    employees= await getEmployees(employees);
+    
+
     let managers= ['None'];
-    db.query( 
-        'SELECT concat(first_name, " ", last_name) as manager FROM employee',
-        function( err, res){
-            for (const element of res){
-                employees.push(element.manager)
-                managers.push(element.manager)
-            }
-            inquirer.prompt([
-                {
-                    type: 'list',
-                    message: 'Pick an employee',
-                    name: 'employee',
-                    choices: employees
-                },
-                {
-                    type: 'list',
-                    message: 'Pick a manager',
-                    name: 'manager',
-                    choices: managers
-                }
-            ])
-            .then( data =>{
-                if (data.manager=='None'){
-                    db.execute(
-                        `Update employee 
-                        SET manager_id= NULL
-                        WHERE id= ${employees.indexOf(data.employee)+1}
-                        `
-                    )
-                } else {
-                    db.execute(
-                        `Update employee 
-                        SET manager_id= ${employees.indexOf(data.manager)}
-                        WHERE id= ${employees.indexOf(data.employee)+1}
-                        `
-                    )
-                }
-            })
-            runEmployeeTracker();
+    managers= await getEmployees(managers);
+
+    inquirer.prompt([
+        {
+            type: 'list',
+            message: 'Pick an employee',
+            name: 'employee',
+            choices: employees
+        },
+        {
+            type: 'list',
+            message: 'Pick a manager',
+            name: 'manager',
+            choices: managers
         }
-    );
+    ])
+    .then( data =>{
+        if (data.manager=='None'){
+            db.promise().query(
+                `Update employee 
+                SET manager_id= NULL
+                WHERE id= ${employees.indexOf(data.employee)+1}
+                `
+            )
+        } else {
+            db.promise().query(
+                `Update employee 
+                SET manager_id= ${managers.indexOf(data.manager)}
+                WHERE id= ${employees.indexOf(data.employee)+1}
+                `
+            )
+        }
+    })
 }
 
-const updateEmpRole= () =>{
+const updateEmpRole= async() =>{
 
     let employees= [];
     let roles= [];
 
-    db.query(
-        'SELECT title FROM role',
-        function( err, res){
-            for (const element of res){
-                roles.push(element.title)
-            }
-        }
-    );
-    
-    db.query( 
-        'SELECT concat(first_name, " ", last_name) as employees FROM employee',
-        function( err, res){
-            for (const element of res){
-                employees.push(element.employees)
-            }
-            inquirer.prompt([
-                {
-                    type: 'list',
-                    message: 'Pick an employee',
-                    name: 'employee',
-                    choices: employees
-                },
-                {
-                    type: 'list',
-                    message: 'Pick a role',
-                    name: 'newRole',
-                    choices: roles
-                }
-            ])
-            .then( data =>{
-                    db.execute(
-                        `Update employee 
-                        SET role_id= ${roles.indexOf(data.newRole)+1}
-                        WHERE id= ${employees.indexOf(data.employee)+1}
-                        `
-                    )
+    employees= await getEmployees(employees);
+    roles= await getRoles();
 
-                    runEmployeeTracker();
-
-            })
+    inquirer.prompt([
+        {
+            type: 'list',
+            message: 'Pick an employee',
+            name: 'employee',
+            choices: employees
+        },
+        {
+            type: 'list',
+            message: 'Pick a role',
+            name: 'newRole',
+            choices: roles
         }
-    );
+    ])
+    .then( data =>{
+            db.promise().execute(
+                `Update employee 
+                SET role_id= ${roles.indexOf(data.newRole)+1}
+                WHERE id= ${employees.indexOf(data.employee)+1}
+                `
+            )
+
+    })
 }
+
+const getDepartments= async ()=> {
+    let departments= [];
+    const data= await db.promise().query(
+        'SELECT name FROM department'
+    );
+    for (const element of data[0]){
+        departments.push(element.name)
+    }
+    return departments
+};
+
+const getRoles= async()=> {
+    let roles= [];
+    const data= await db.promise().query(
+        'SELECT title FROM role'
+    );
+
+    for (const element of data[0]){
+        roles.push(element.title)
+    }
+
+    return roles
+};
+
+const getEmployees= async (employees)=> {
+    const data=  await db.promise().query( 'SELECT concat(first_name, " ", last_name) as manager FROM employee');
+    for (const element of data[0]){
+        employees.push(element.manager)
+    }
+    return employees
+};
+
 
 const runEmployeeTracker= ()=>{
     promptAction()
@@ -277,7 +260,6 @@ const runEmployeeTracker= ()=>{
            viewRoles();
         }else if (data.action == 'view all employees'){
            viewEmployees();
-           runEmployeeTracker();
         } else if (data.action== 'add a department'){
            addDepartment();
         } else if (data.action== 'add a role'){
