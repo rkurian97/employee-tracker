@@ -20,6 +20,7 @@ const promptAction= () =>{
 const viewDepartments= async () =>{
     const data= await db.promise().query('SELECT * FROM department');
     console.table(data[0]);
+    runEmployeeTracker();
 };
 
 // show role table
@@ -33,6 +34,7 @@ const viewRoles= async () =>{
     );
 
     console.table(data[0]);
+    runEmployeeTracker();
 }
 
 //show employee table
@@ -46,6 +48,7 @@ const viewEmployees= async () =>{
         on e.manager_id=b.id;`
     );
     console.table(data[0]);
+    runEmployeeTracker();
 }
 
 // add a department
@@ -59,11 +62,12 @@ const addDepartment= () => {
 
         }
     ])
-    .then(data =>{
-        db.promise().query(
+    .then( async(data) =>{
+        await db.promise().query(
             `INSERT INTO department (name)
              VALUES ('${data.department}');`
         );
+        runEmployeeTracker();
     })
 }
 
@@ -90,11 +94,13 @@ const addRole = async() => {
             choices: departments
         }
     ])
-    .then( data =>{
-        db.promise().query(
+    .then( async(data) =>{
+        await db.promise().query(
             `INSERT INTO role (title, salary, department_id)
             VALUES ('${data.title}', ${data.salary}, ${departments.indexOf(data.department)+1});`
         )
+
+        runEmployeeTracker();
     })
 }
 
@@ -129,18 +135,20 @@ const addEmployee= async () => {
             choices: managers
         }
     ])
-    .then( data =>{
+    .then( async(data) =>{
         if (data.manager=='None'){
-            db.promise().query(
+            await db.promise().query(
                 `INSERT INTO employee (first_name, last_name, role_id, manager_id)
                 VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, NULL);`
             )
         } else {
-            db.promise().query(
+           await db.promise().query(
                 `INSERT INTO employee (first_name, last_name, role_id, manager_id)
                 VALUES ('${data.first}', '${data.last}', ${roles.indexOf(data.role)+1}, ${managers.indexOf(data.manager)});`
             )
         }
+
+        runEmployeeTracker();
     })
 }
 
@@ -166,22 +174,23 @@ const updateEmpManager= async () =>{
             choices: managers
         }
     ])
-    .then( data =>{
+    .then( async(data) =>{
         if (data.manager=='None'){
-            db.promise().query(
+            await db.promise().query(
                 `Update employee 
                 SET manager_id= NULL
                 WHERE id= ${employees.indexOf(data.employee)+1}
                 `
             )
         } else {
-            db.promise().query(
+           await db.promise().query(
                 `Update employee 
                 SET manager_id= ${managers.indexOf(data.manager)}
                 WHERE id= ${employees.indexOf(data.employee)+1}
                 `
             )
         }
+        runEmployeeTracker();
     })
 }
 
@@ -207,13 +216,14 @@ const updateEmpRole= async() =>{
             choices: roles
         }
     ])
-    .then( data =>{
-            db.promise().execute(
+    .then( async(data) =>{
+            await db.promise().execute(
                 `Update employee 
                 SET role_id= ${roles.indexOf(data.newRole)+1}
                 WHERE id= ${employees.indexOf(data.employee)+1}
                 `
             )
+            runEmployeeTracker();
 
     })
 }
